@@ -1,0 +1,46 @@
+# Maintainer: Luigi Pertoldi <luigi.pertoldi@hotmail.it>
+pkgname=bayesian-analysis-toolkit
+_pkgname=BAT
+pkgver=1.0.0
+pkgrel=1
+epoch=
+pkgdesc="BAT - Bayesian Analysis Toolkit"
+arch=('x86_64')
+url="http://mpp.mpg.de/bat"
+license=('LGPL3')
+groups=()
+depends=('root')
+makedepends=('make')
+checkdepends=()
+optdepends=('libcuba')
+provides=()
+conflicts=()
+replaces=()
+backup=()
+options=()
+install=
+changelog=
+source=("https://github.com/bat/bat/releases/download/v$pkgver/$_pkgname-$pkgver.tar.gz")
+noextract=()
+md5sums=()
+validpgpkeys=()
+
+build() {
+    cd "$_pkgname-$pkgver"
+    ./configure \
+        --enable-parallel \
+        --enable-debug \
+        --enable-roostats \
+        --prefix=/usr
+    make
+}
+
+# check() {
+# 	cd "$pkgname-$pkgver"
+# 	make -k check
+# }
+
+package() {
+    cd "$_pkgname-$pkgver"
+    make DESTDIR="$pkgdir/" install
+}

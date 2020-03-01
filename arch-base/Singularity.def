@@ -1,0 +1,53 @@
+Bootstrap:docker
+From:archlinux/base:latest
+
+%labels
+    Author luigi.pertoldi@hotmail.it
+    Version v1.0
+
+# yay will be usable with `su gipert -c 'yay -S pkg'`
+# dependencies must be installed manually with pacman
+# e.g. by
+# $ source PKGBUILD
+# $ pacman -S --noconfirm --needed --asdeps \
+#     $depends $makedepends [$optdepends]
+
+%post
+    # always update first
+    pacman -Syu --noconfirm
+
+    # set up locale
+    ln -s /usr/share/zoneinfo/UTC /etc/localtime
+    echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
+    locale-gen
+    echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+    sed -i 's|#Color|Color|g' /etc/pacman.conf
+
+    # create user to use yay
+    useradd -m gipert
+    # configure it as no-passwd sudoer
+    pacman -S --noconfirm --needed sudo
+    echo "gipert:" | chpasswd -e
+    echo "gipert      ALL = NOPASSWD: ALL" >> /etc/sudoers
+    sed -i 's|#MAKEFLAGS="-j2"|MAKEFLAGS="-j$(nproc)"|g' /etc/makepkg.conf
+    # don't compress the packages built here
+    sed -i "s|PKGEXT='.pkg.tar.xz'|PKGEXT='.pkg.tar'|g" /etc/makepkg.conf
+    # install devel packages (without systemd)
+    pkgs=$(pacman -S base-devel --print-format '%n '); pkgs=${pkgs//systemd/}; pkgs=${pkgs//$'\n'/}
+    pacman -S --needed --noconfirm $pkgs
+    # install yay
+    su gipert -c 'cd && git clone https://aur.archlinux.org/yay.git'
+    source /home/gipert/yay/PKGBUILD
+    pacman -S --noconfirm --needed --asdeps $depends $makedepends
+    su gipert -c 'cd && cd yay && makepkg -rc'
+    cd /home/gipert/yay && pacman -U yay-*.pkg.tar --noconfirm
+
+    # stuff I really need
+    pacman -S --noconfirm vim zsh kitty-terminfo
+
+    # remove useless stuff
+    rm -rf /home/gipert/yay
+    pacman -Rns $(pacman -Qtdq) || true
+
+%environment
+   export EDITOR="vim"

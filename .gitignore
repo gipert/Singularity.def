@@ -1,0 +1,10 @@
+*.simg
+*.sif
+*.img
+*.sqsh
+*.DS_Store
+*.swp
+/*/src
+/*/*.tar.gz
+
+/gerda-tgsend/telegram-send.conf

@@ -1,0 +1,9 @@
+Bootstrap: library
+From: gipert/arch-base:latest
+
+%post
+    pacman -Syu --noconfirm
+    source PKGBUILD
+    pacman -S --noconfirm --needed --asdeps "${makedepends[@]}" "${depends[@]}"
+    su gipert -c 'makepkg'
+    pacman -U --noconfirm *.pkg.tar

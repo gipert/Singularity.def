@@ -1,0 +1,9 @@
+Bootstrap: library
+From: gipert/arch-base:latest
+
+%post
+    pacman -Syu --noconfirm texlive-most
+    source PKGBUILD
+    pacman -S --noconfirm --needed --asdeps \
+      "${makedepends[@]}" "${depends[@]}" wget base-devel
+    su gipert -c 'yay -S asymptote'
