@@ -1,0 +1,67 @@
+pkgname=geant4
+pkgver=10.4.3
+_pkgver=10.04.p03
+pkgrel=1
+pkgdesc="A simulation toolkit for particle physics interactions."
+url="http://geant4.cern.ch/"
+arch=('x86_64')
+license=('custom: http://geant4.cern.ch/license/')
+makedepends=('cmake>=3.8')
+depends=('clhep' 'xerces-c' 'qt5-base' 'glu' 'openmotif' 'zlib') # 'soxt'
+optdepends=(
+    'java-environment: for histogram visualizations and analysis'
+    'tcsh: for C Shell support'
+    'python: for G4Python support'
+)
+options=('!emptydirs')
+source=("http://cern.ch/geant4-data/releases/${pkgname}.${_pkgver}.tar.gz")
+sha256sums=('31a452374c86b58b3ec5bd3fa851279e396c7e5a3b5a43d61111913d611029c8')
+PKGEXT='.pkg.tar' # do not compress
+
+prepare() {
+    msg 'Creating build directory'
+    [ -d ${srcdir}/build ] || mkdir ${srcdir}/build
+}
+
+build() {
+
+    cd ${srcdir}/build
+    msg 'Configuring the build'
+
+    # until SoXt fails to build because of coin, support for Inventor is dropped
+    env -i \
+        QT_SELECT=5 \
+        PATH=/usr/bin \
+        cmake \
+        --fail-on-missing \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR="lib" \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DGEANT4_INSTALL_DATA=ON \
+        -DGEANT4_USE_SYSTEM_CLHEP=ON \
+        -DGEANT4_BUILD_MULTITHREADED=OFF \
+        -DGEANT4_USE_GDML=ON \
+        -DGEANT4_USE_QT=ON \
+        -DGEANT4_USE_OPENGL_X11=ON \
+        -DGEANT4_USE_RAYTRACER_X11=ON \
+        -DGEANT4_USE_INVENTOR=OFF \
+        -DGEANT4_USE_XM=ON \
+        -DGEANT4_BUILD_CXXSTD=11 \
+        -DOpenGL_GL_PREFERENCE=GLVND \
+        ../${pkgname}.${_pkgver}
+
+    msg 'Compiling'
+    make
+}
+
+package() {
+
+    cd ${srcdir}/build
+    make DESTDIR="${pkgdir}" install
+
+    echo 'pushd /usr/bin &> /dev/null && source geant4.sh  && popd &> /dev/null' > ${srcdir}/geant4.profile.sh
+    echo 'pushd /usr/bin >& /dev/null && source geant4.csh && popd >& /dev/null' > ${srcdir}/geant4.profile.csh
+    install -d ${pkgdir}/etc/profile.d
+    install -m755 ${srcdir}/geant4.profile.sh  ${pkgdir}/etc/profile.d/geant4.sh
+    install -m755 ${srcdir}/geant4.profile.csh ${pkgdir}/etc/profile.d/geant4.csh
+}

@@ -12,7 +12,7 @@ groups=()
 depends=('root')
 makedepends=('make')
 checkdepends=()
-optdepends=('libcuba')
+optdepends=()
 provides=()
 conflicts=()
 replaces=()
@@ -22,7 +22,7 @@ install=
 changelog=
 source=("https://github.com/bat/bat/releases/download/v$pkgver/$_pkgname-$pkgver.tar.gz")
 noextract=()
-md5sums=()
+md5sums=('7f29e7766ab1e7c2d265aac15c10a0a8')
 validpgpkeys=()
 
 build() {
@@ -31,14 +31,15 @@ build() {
         --enable-parallel \
         --enable-debug \
         --enable-roostats \
+        --with-cuba=download \
         --prefix=/usr
     make
 }
 
-# check() {
-# 	cd "$pkgname-$pkgver"
-# 	make -k check
-# }
+check() {
+    cd "$_pkgname-$pkgver"
+    make -k check
+}
 
 package() {
     cd "$_pkgname-$pkgver"

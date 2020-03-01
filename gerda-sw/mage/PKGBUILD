@@ -1,0 +1,44 @@
+pkgname=mage
+_pkgname=MaGe
+pkgver=unknown
+pkgrel=1
+pkgdesc='Majorana Gerda simulation software'
+arch=('x86_64')
+depends=('mgdo')
+makedepends=('cmake' 'texlive-core')
+
+prepare() {
+    cd ${srcdir}
+    git clone -b testing git@github.com:mppmu/MaGe .
+    gco gerda-optical
+}
+
+pkgver() {
+    cd ${srcdir}
+    git describe --tags | sed 's/-/./g'
+}
+
+build() {
+  msg 'Compiling the package'
+
+  mkdir -p build
+  cd build
+  cmake \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBUILD_DOCS=ON \
+    -DBUILD_TESTS=ON \
+    ../${srcdir}
+  make
+}
+
+check() {
+  msg 'Testing the package'
+  cd build
+  make test ARGS=-j$(nproc)
+}
+
+package() {
+  msg 'Creating the package'
+  cd ${srcdir}
+  make DESTDIR="${pkgdir}" install
+}

@@ -1,0 +1,35 @@
+pkgname=mgdo
+_pkgname=MGDO
+pkgver=01.02.r13.gd6ae4a6
+pkgrel=1
+pkgdesc='Majorana Gerda Data Objects'
+arch=('x86_64')
+depends=('root' 'clhep' 'curl' 'fftw' 'perl')
+makedepends=('make')
+
+prepare() {
+    cd ${srcdir}
+    [ "$(ls -A .)" ] || git clone -b testing git@github.com:mppmu/MGDO .
+}
+
+pkgver() {
+    cd ${srcdir}
+    git describe --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/MGDO.v//g'
+}
+
+build() {
+  msg 'Compiling the package'
+
+  cd ${srcdir}
+  CXXFLAGS='-std=c++11' ./configure \
+    --enable-streamers \
+    --enable-tam \
+    --prefix=/usr
+  make -j1
+}
+
+package() {
+  msg 'Creating the package'
+  cd ${srcdir}
+  make DESTDIR="${pkgdir}" install
+}

@@ -1,0 +1,42 @@
+pkgname=clhep
+_pkgname=CLHEP
+pkgver=2.3.4.4
+pkgrel=1
+pkgdesc='A Class library for High Energy Physics'
+url="http://proj-clhep.web.cern.ch/"
+arch=('x86_64' 'i686')
+license=('GPL3')
+depends=('bash')
+options=('!emptydirs' 'staticlibs')
+makedepends=('cmake' 'texlive-core' 'doxygen')
+source=(http://proj-clhep.web.cern.ch/proj-clhep/dist1/${pkgname}-${pkgver}.tgz)
+sha256sums=('e54de15ffa5108a1913c4910845436345c89ddb83480cd03277a795fafabfb9d')
+
+build() {
+
+  msg 'Creating building directory'
+  [ -d ${srcdir}/build ] && rm -rf ${srcdir}/build
+  mkdir ${srcdir}/build
+  cd ${srcdir}/build
+
+  msg 'Compiling the package'
+  cmake \
+    --fail-on-missing \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCLHEP_BUILD_DOCS=ON \
+    ${srcdir}/${pkgver}/${_pkgname}
+  make || return 1
+}
+
+check() {
+  cd ${srcdir}/build
+  make test
+}
+
+package() {
+  msg 'Creating the package'
+  cd ${srcdir}/build
+  make DESTDIR="${pkgdir}" install
+  install -Dm644 ${srcdir}/${pkgver}/${_pkgname}/COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
+}
