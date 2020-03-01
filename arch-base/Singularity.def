@@ -34,7 +34,7 @@ From:archlinux/base:latest
     sed -i "s|PKGEXT='.pkg.tar.xz'|PKGEXT='.pkg.tar'|g" /etc/makepkg.conf
     # install devel packages (without systemd)
     pkgs=$(pacman -S base-devel --print-format '%n '); pkgs=${pkgs//systemd/}; pkgs=${pkgs//$'\n'/}
-    pacman -S --needed --noconfirm $pkgs
+    pacman -S --needed --noconfirm $pkgs git
     # install yay
     su gipert -c 'cd && git clone https://aur.archlinux.org/yay.git'
     source /home/gipert/yay/PKGBUILD

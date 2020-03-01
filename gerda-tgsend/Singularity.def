@@ -1,5 +1,5 @@
 Bootstrap: library
-From: gipert/arch-base:latest
+From: gipert/default/arch-base:latest
 
 %files
     telegram-send.conf /etc/telegram-send.conf

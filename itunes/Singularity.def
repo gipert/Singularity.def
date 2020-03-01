@@ -1,7 +1,5 @@
-Bootstrap: localimage
-From: /home/gipert/code/my-containers/archlinux-base/archlinux-base.sif
-#Bootstrap: library
-#From: gipert/default/archlinux-base:latest
+Bootstrap: library
+From: gipert/default/arch-base:latest
 
 %labels
     Author luigi.pertoldi@hotmail.it
