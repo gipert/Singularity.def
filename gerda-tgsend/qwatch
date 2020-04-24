@@ -90,7 +90,7 @@ else
     list=`qstat -r -u $user 2>&1`
 fi
 
-echo $list | grep 'Full jobname:' | grep $pattern >/dev/null
+echo $list | grep 'Full jobname:' | grep -E $pattern >/dev/null
 found=$?
 
 if [ $found -ne 0 ]; then
@@ -112,7 +112,7 @@ routine() {
             list=`qstat -r -u $user 2>&1`
         fi
 
-        echo $list | grep 'Full jobname:' | grep $pattern >/dev/null
+        echo $list | grep 'Full jobname:' | grep -E $pattern >/dev/null
         found=$?
 
         if [ $found -ne 0 ]; then

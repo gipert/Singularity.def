@@ -1,0 +1,89 @@
+#!/bin/bash
+#
+# example usage:
+#  $ gpac yay
+#  $ gpac https://github.com/Jguer/yay.git
+#  $ gpac /local/PKGBUILD
+#  $ gpac /local/dir/with/PKGDIR
+
+usage() {
+    echo >&2 "USAGE: `basename $0` [OPTIONS] aur-package|PKGBUILD|directory|URL"
+    echo >&2 ""
+    echo >&2 "OPTIONS:"
+    echo >&2 "  -r, --remove-tmp : remove temp build directory at the end"
+    echo >&2 "  -h, --help       : display this message and exit"
+    exit 1;
+}
+
+removetmp=false
+
+options='rh'
+longoptions='remove-tmp,help'
+parsed=$(getopt --name `basename $0` --options $options --longoptions $longoptions -- "$@")
+[ $? -eq 0 ] || exit 1
+eval set -- "$parsed"
+while true; do
+    case "$1" in
+        -r | --remove-tmp)
+            removetmp=true
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -h | --help | *)
+          usage
+          ;;
+    esac
+done
+
+echo "$@"
+
+input="$1"
+[[ -z "$input" ]] && echo "ERROR: must supply an argument" && exit 1
+
+set -ex
+
+tmpdir=`mktemp -d`
+chmod a+rwx "$tmpdir"
+echo "INFO: using build directory $tmpdir"
+
+if [[ "$input" =~ (http|https)://* ]]; then
+
+    if [[ "$input" =~ .git$ ]]; then
+        \git clone "$input" "$tmpdir"
+        [[ ! -f "$tmpdir/PKGBUILD" ]] && echo "ERROR: cloned repository does not contain a PKGBUILD file"
+    else
+        \wget "$input" -O "$tmpdir/PKGBUILD"
+    fi
+
+elif [[ -f "$input" && `basename "$input"` == "PKGBUILD" ]]; then
+
+    \cp "$input" "$tmpdir"/
+
+elif [[ -d "$input" && -f "$input/PKGBUILD" ]]; then
+
+    \rsync -rvh "$input"/ "$tmpdir"/
+
+else
+
+    # check AUR
+    if \git ls-remote --exit-code -h "https://aur.archlinux.org/${input}.git"; then
+        \git clone "https://aur.archlinux.org/${input}.git" "$tmpdir"
+    else
+        echo "ERROR: input is neither a URL, AUR package or (a directory containing) a valid PKGBUILD file"
+        exit 1
+    fi
+fi
+
+\cd "$tmpdir"
+source ./PKGBUILD
+pacman -S --noconfirm --needed --asdeps "${makedepends[@]}" "${depends[@]}"
+su gipert -c "cd "$tmpdir" && makepkg -rc"
+pacman -U --noconfirm ${pkgname}-${pkgver}-${pkgrel}-${arch}.pkg.tar
+\cd
+
+$removetmp && rm -rf "$tmpdir"
+
+set +ex

@@ -2,4 +2,4 @@ Bootstrap: library
 From: gipert/default/arch-base:latest
 
 %post
-    pacman -Syu --noconfirm texlive-most asymptote
+    pacman -Syu --noconfirm root

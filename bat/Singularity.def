@@ -2,13 +2,8 @@ Bootstrap: library
 From: gipert/default/arch-base:latest
 
 %files
-    PKGBUILD /build/PKGBUILD
+    PKGBUILD /tmp/PKGBUILD
 
 %post
     pacman -Syu --noconfirm
-    cd /build
-    source ./PKGBUILD
-    pacman -S --noconfirm --needed --asdeps "${makedepends[@]}" "${depends[@]}"
-    su gipert -c 'cd /build && makepkg -rc'
-    pacman -U --noconfirm *.pkg.tar
-    rm -rf /build
+    gpac -r /tmp/PKGBUILD
