@@ -1,2 +1,2 @@
 Bootstrap: docker
-From: julia:latest
+From: julia:1.4

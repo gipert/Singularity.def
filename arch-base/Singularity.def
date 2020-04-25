@@ -41,7 +41,7 @@ From:archlinux/base:latest
 
     # install devel packages (without systemd)
     pkgs=$(pacman -S base-devel --print-format '%n '); pkgs=${pkgs//systemd/}; pkgs=${pkgs//$'\n'/}
-    pacman -S --needed --noconfirm $pkgs git
+    pacman -S --needed --noconfirm $pkgs wget git expac
 
     # stuff I really need
     pacman -S --noconfirm vim zsh kitty-terminfo

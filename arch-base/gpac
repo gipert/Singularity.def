@@ -6,13 +6,135 @@
 #  $ gpac /local/PKGBUILD
 #  $ gpac /local/dir/with/PKGDIR
 
-usage() {
+passless_user=gipert
+
+_log() {
+    case "$1" in
+        "debug")
+            shift
+            echo -e "\033[36m[ DEBUG:\033[0m $@"
+            ;;
+        "info")
+            shift
+            echo -e "\033[97;1m[ INFO:\033[0m $@"
+            ;;
+        "warn")
+            shift
+            echo -e "\033[33m[ WARNING:\033[0m $@"
+            ;;
+        "err")
+            shift
+            echo -e "\033[91m[ ERROR:\033[0m $@"
+            ;;
+        *)
+            _log err "unknown logging level $1"
+    esac
+}
+
+_usage() {
     echo >&2 "USAGE: `basename $0` [OPTIONS] aur-package|PKGBUILD|directory|URL"
     echo >&2 ""
     echo >&2 "OPTIONS:"
     echo >&2 "  -r, --remove-tmp : remove temp build directory at the end"
     echo >&2 "  -h, --help       : display this message and exit"
     exit 1;
+}
+
+_is_aur_package() {
+    \git ls-remote --exit-code -h "https://aur.archlinux.org/${1}.git" > /dev/null
+}
+
+_is_off_package() {
+    expac "%n" -S ${1} > /dev/null
+}
+
+_is_installed() {
+    pacman -Qqi "$1" >& /dev/null
+}
+
+_package() {
+
+    if _is_installed "$1"; then
+        _log info "$1 already installed"
+        return
+    fi
+
+    local tmpdir=`mktemp -d`
+    chmod a+rwx "$tmpdir"
+    _log info "using build directory $tmpdir"
+
+    local input="$1"
+
+    if [[ "$input" =~ (http|https)://* ]]; then
+
+        if [[ "$input" =~ .git$ ]]; then
+            \git clone "$input" "$tmpdir"
+            [[ ! -f "$tmpdir/PKGBUILD" ]] && _log err "cloned repository does not contain a PKGBUILD file"
+        else
+            \wget "$input" -O "$tmpdir/PKGBUILD"
+        fi
+
+    elif [[ -f "$input" && `basename "$input"` == "PKGBUILD" ]]; then
+
+        \cp "$input" "$tmpdir"/
+
+    elif [[ -d "$input" && -f "$input/PKGBUILD" ]]; then
+
+        \rsync -rvh "$input"/ "$tmpdir"/
+
+    else
+
+        # check AUR
+        if _is_aur_package "$input"; then
+            \git clone "https://aur.archlinux.org/${input}.git" "$tmpdir"
+        elif _is_off_package "$input"; then
+            pacman -S --noconfirm --needed "$input"
+            return
+        else
+            _log err "input is neither a URL, AUR package or (a directory containing) a valid PKGBUILD file"
+            exit 1
+        fi
+    fi
+
+    \cd "$tmpdir"
+    source ./PKGBUILD
+
+    local off_pkgs=""
+    local aur_pkgs=""
+    for pkg in "${makedepends[@]}" "${depends[@]}"; do
+        if _is_aur_package "$pkg"; then
+            aur_pkgs="$aur_pkgs $pkg"
+        elif _is_off_package "$pkg"; then
+            off_pkgs="$off_pkgs $pkg"
+        fi
+    done
+
+    if [[ -n "$off_pkgs" ]]; then
+        _log info "installing dependencies (official packages): \b$off_pkgs"
+        pacman -S --noconfirm --needed --asdeps ${off_pkgs[@]}
+    fi
+
+    if [[ -n "$aur_pkgs" ]]; then
+        _log info "installing dependencies (AUR packages): \b$aur_pkgs"
+        for pkg in ${aur_pkgs[@]}; do
+            if _is_installed "$pkg"; then
+                _log info "$pkg already installed"
+            else
+                _log info "installing $pkg"
+                _package "$pkg" $2
+            fi
+        done
+    fi
+
+    _log info "starting $input build"
+    su $passless_user -c "cd "$tmpdir" && makepkg -rc"
+    pacman -U --noconfirm ${input}-${pkgver}-${pkgrel}-${arch}.pkg.tar
+
+    if $2; then
+        _log info "removing temporary directory"
+        rm -rf "$tmpdir"
+    fi
+
 }
 
 removetmp=false
@@ -33,57 +155,22 @@ while true; do
             break
             ;;
         -h | --help | *)
-          usage
+          _usage
           ;;
     esac
 done
 
-echo "$@"
+[[ -z "$1" ]] && _usage
 
-input="$1"
-[[ -z "$input" ]] && echo "ERROR: must supply an argument" && exit 1
+set -e
 
-set -ex
-
-tmpdir=`mktemp -d`
-chmod a+rwx "$tmpdir"
-echo "INFO: using build directory $tmpdir"
-
-if [[ "$input" =~ (http|https)://* ]]; then
-
-    if [[ "$input" =~ .git$ ]]; then
-        \git clone "$input" "$tmpdir"
-        [[ ! -f "$tmpdir/PKGBUILD" ]] && echo "ERROR: cloned repository does not contain a PKGBUILD file"
+for input in "$@"; do
+    if _is_installed "$input"; then
+        _log info "$input already installed"
     else
-        \wget "$input" -O "$tmpdir/PKGBUILD"
+        _log info "installing $input"
+        _package "$input" $removetmp
     fi
+done
 
-elif [[ -f "$input" && `basename "$input"` == "PKGBUILD" ]]; then
-
-    \cp "$input" "$tmpdir"/
-
-elif [[ -d "$input" && -f "$input/PKGBUILD" ]]; then
-
-    \rsync -rvh "$input"/ "$tmpdir"/
-
-else
-
-    # check AUR
-    if \git ls-remote --exit-code -h "https://aur.archlinux.org/${input}.git"; then
-        \git clone "https://aur.archlinux.org/${input}.git" "$tmpdir"
-    else
-        echo "ERROR: input is neither a URL, AUR package or (a directory containing) a valid PKGBUILD file"
-        exit 1
-    fi
-fi
-
-\cd "$tmpdir"
-source ./PKGBUILD
-pacman -S --noconfirm --needed --asdeps "${makedepends[@]}" "${depends[@]}"
-su gipert -c "cd "$tmpdir" && makepkg -rc"
-pacman -U --noconfirm ${pkgname}-${pkgver}-${pkgrel}-${arch}.pkg.tar
-\cd
-
-$removetmp && rm -rf "$tmpdir"
-
-set +ex
+set +e
